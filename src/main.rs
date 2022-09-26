@@ -21,6 +21,10 @@ struct Args {
     ///
     /// A file containing patches to be applied
     patches: String,
+
+    /// write changes
+    #[clap(short, long)]
+    force: bool,
 }
 
 /// patches to be applied to an aircraft's config files
@@ -130,6 +134,28 @@ impl Diff {
 
         Ok(())
     }
+
+    fn show_changes(&self) -> io::Result<()> {
+        if !self.engines.changes.is_empty() {
+            println!("Engine changes:");
+            for (key, (new, old)) in &self.engines.changes {
+                println!("{key}:\n\t{old}\n\t{new}");
+            }
+
+            if !self.flight_model.changes.is_empty() {
+                println!();
+            }
+        }
+
+        if !self.flight_model.changes.is_empty() {
+            println!("Flight model changes:");
+            for (key, (new, old)) in &self.flight_model.changes {
+                println!("{key}:\n\t{old}\n\t{new}");
+            }
+        }
+
+        Ok(())
+    }
 }
 
 fn write_modified_file(patch: &PathChanges) -> io::Result<()> {
@@ -188,7 +214,12 @@ fn run(args: &Args) -> anyhow::Result<()> {
 
     for (package, patch) in packages {
         let diff = patch.diff(&package)?;
-        diff.write_changes()?;
+
+        if args.force {
+            diff.write_changes()?;
+        } else {
+            diff.show_changes()?;
+        }
     }
 
     Ok(())
